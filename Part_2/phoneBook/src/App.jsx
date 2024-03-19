@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import {
+  create,
+  deletePerson,
+  getPersons,
+  updatePerson,
+} from "./services/persons";
 
 const Filter = ({ filter, handleFilterChange }) => {
   return (
@@ -31,7 +36,7 @@ const PersonForm = ({
   );
 };
 
-const Persons = ({ persons, filter }) => {
+const Persons = ({ persons, filter, handleDelete }) => {
   return persons
     .filter(
       (p) =>
@@ -39,9 +44,12 @@ const Persons = ({ persons, filter }) => {
         p.number.toLowerCase().includes(filter.toLowerCase())
     )
     .map((person) => (
-      <p key={person.name}>
+      <div key={person.id}>
         {person.name} {person.number}
-      </p>
+        <button style={{ margin: 10 }} onClick={handleDelete} value={person.id}>
+          Delete
+        </button>
+      </div>
     ));
 };
 
@@ -52,26 +60,62 @@ const App = () => {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    axios
-      .get("http://localhost:3001/persons")
-      .then((response) => setPersons(response.data));
+    // Get all persons from API
+    getPersons().then((response) => setPersons(response.data));
   }, []);
 
   const addPerson = (e) => {
     e.preventDefault();
     // Check if name already exists
-    let nameExists = persons.find((person) => person.name === newName);
+    let personExists = persons.find(
+      (person) => person.name.toLowerCase() === newName.toLowerCase()
+    );
 
-    if (nameExists) {
-      alert(`${newName} is already added to phonebook`);
+    const newPerson = {
+      name: newName,
+      number: newNumber,
+    };
+
+    if (personExists) {
+      if (
+        window.confirm(
+          `${newName} is already added to phonebook. Do you want to update the phone number?`
+        )
+      ) {
+        updatePerson(personExists.id, newPerson).then((returnedPerson) => {
+          console.log({ returnedPerson });
+          setPersons(
+            persons.map((p) =>
+              p.id.toString() === personExists.id ? returnedPerson.data : p
+            )
+          );
+          console.log({ persons });
+          setNewName("");
+          setNewNumber("");
+        });
+      }
     } else if (newName === "" || newNumber === "") {
       alert("Name and Number are required fields");
     } else {
-      setPersons(persons.concat([{ name: newName, number: newNumber }]));
+      // Create new person
+      create(newPerson).then((response) => {
+        setPersons(persons.concat(response.data));
+        setNewName("");
+        setNewNumber("");
+      });
     }
+  };
 
-    setNewName("");
-    setNewNumber("");
+  // Delete a person from APi
+  const handleDelete = (e) => {
+    if (window.confirm("Are you sure you want to delete this person?")) {
+      const idToDelete = e.target.value;
+
+      deletePerson(idToDelete).then(() => {
+        // Filter generates a new array
+        setPersons(persons.filter((person) => person.id !== idToDelete));
+      });
+    }
   };
 
   const handleNameChange = (e) => {
@@ -102,7 +146,7 @@ const App = () => {
       />
       <h2>Numbers</h2>
 
-      <Persons persons={persons} filter={filter} />
+      <Persons persons={persons} filter={filter} handleDelete={handleDelete} />
     </div>
   );
 };
