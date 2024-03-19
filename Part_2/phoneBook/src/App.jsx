@@ -6,6 +6,14 @@ import {
   updatePerson,
 } from "./services/persons";
 
+const Notification = ({ message, clase }) => {
+  if (message === null || clase === null) {
+    return null;
+  }
+
+  return <div className={clase}>{message}</div>;
+};
+
 const Filter = ({ filter, handleFilterChange }) => {
   return (
     <div>
@@ -58,6 +66,8 @@ const App = () => {
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [filter, setFilter] = useState("");
+  const [notificationMessage, setNotificationMessage] = useState(null);
+  const [classMessage, setClassMessage] = useState("");
 
   useEffect(() => {
     // Get all persons from API
@@ -82,27 +92,52 @@ const App = () => {
           `${newName} is already added to phonebook. Do you want to update the phone number?`
         )
       ) {
-        updatePerson(personExists.id, newPerson).then((returnedPerson) => {
-          console.log({ returnedPerson });
-          setPersons(
-            persons.map((p) =>
-              p.id.toString() === personExists.id ? returnedPerson.data : p
-            )
-          );
-          console.log({ persons });
-          setNewName("");
-          setNewNumber("");
-        });
+        updatePerson(personExists.id, newPerson)
+          .then((returnedPerson) => {
+            console.log({ returnedPerson });
+            setPersons(
+              persons.map((p) =>
+                p.id.toString() === personExists.id ? returnedPerson.data : p
+              )
+            );
+            console.log({ persons });
+            setNewName("");
+            setNewNumber("");
+          })
+          .catch((error) => {
+            setNotificationMessage(error.message);
+            setClassMessage("error");
+
+            setTimeout(() => {
+              setNotificationMessage(null);
+              setClassMessage("");
+            }, 3000);
+          });
       }
     } else if (newName === "" || newNumber === "") {
       alert("Name and Number are required fields");
     } else {
       // Create new person
-      create(newPerson).then((response) => {
-        setPersons(persons.concat(response.data));
-        setNewName("");
-        setNewNumber("");
-      });
+      create(newPerson)
+        .then((response) => {
+          setPersons(persons.concat(response.data));
+          setNewName("");
+          setNewNumber("");
+          setNotificationMessage([
+            `${newName} added to the phonebook`,
+            "success",
+          ]);
+        })
+        .catch((error) => {
+          console.error("ha ocurrido un error");
+          setNotificationMessage(error.message);
+          setClassMessage("error");
+        });
+
+      setTimeout(() => {
+        setNotificationMessage(null);
+        setClassMessage("error");
+      }, 3000);
     }
   };
 
@@ -111,10 +146,21 @@ const App = () => {
     if (window.confirm("Are you sure you want to delete this person?")) {
       const idToDelete = e.target.value;
 
-      deletePerson(idToDelete).then(() => {
-        // Filter generates a new array
-        setPersons(persons.filter((person) => person.id !== idToDelete));
-      });
+      deletePerson(idToDelete)
+        .then(() => {
+          // Filter generates a new array
+          setPersons(persons.filter((person) => person.id !== idToDelete));
+        })
+        .catch((error) => {
+          console.error("ha ocurrido un error");
+          setNotificationMessage(error.message);
+          setClassMessage("error");
+
+          setTimeout(() => {
+            setNotificationMessage(null);
+            setClassMessage("");
+          }, 3000);
+        });
     }
   };
 
@@ -132,6 +178,8 @@ const App = () => {
 
   return (
     <div>
+      <Notification message={notificationMessage} clase={classMessage} />
+
       <h2>Phonebook</h2>
 
       <Filter filter={filter} handleFilterChange={handleFilterChange} />
