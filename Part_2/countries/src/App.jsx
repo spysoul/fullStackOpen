@@ -61,7 +61,7 @@ function App() {
         ""
       )}
 
-      {country && country.name ? <Country country={country} /> : <p>asdsd</p>}
+      {country && country.name ? <Country country={country} /> : null}
     </>
   );
 }
